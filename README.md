@@ -8,11 +8,9 @@ Agent Skills are folders of instructions, scripts, and resources that agents can
 
 ## Available Skills
 <!-- START:Available-Skills -->
-
 | Skill | Description |
 | ----- | ----------- |
-| beamdrop | Interact with a Beamdrop file storage server — upload, download, and manage files via the S3-compatible API. Use when the user wants to store files, create buckets, generate presigned URLs, or manage API keys on a Beamdrop instance. |
-
+| [beamdrop](./skills/beamdrop) | Interact with a Beamdrop file storage server — upload, download, and manage f... |
 <!-- END:Available-Skills -->
 
 ## Installation

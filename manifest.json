@@ -2,11 +2,18 @@
   "name": "beamdrop-agent-skills",
   "description": "beamdrop agent skills",
   "version": "1.0.0",
-  "author": { "name": "tacheraSasi", "email": "tacherasasi@gmail.com" },
+  "author": {
+    "name": "tacheraSasi",
+    "email": "tacherasasi@gmail.com"
+  },
   "homepage": "https://example.com",
   "repository": "https://github.com/beamdrop/agent-skills",
   "license": "MIT",
-  "keywords": ["ai","agent","skill"],
+  "keywords": [
+    "ai",
+    "agent",
+    "skill"
+  ],
   "skills": [
     {
       "name": "beamdrop",
@@ -14,7 +21,11 @@
       "version": "1.0.0",
       "source": "./skills/beamdrop",
       "license": "MIT",
-      "keywords": ["ai","agent","skill"]
+      "keywords": [
+        "ai",
+        "agent",
+        "skill"
+      ]
     }
   ]
 }
