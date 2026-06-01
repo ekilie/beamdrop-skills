@@ -12,7 +12,7 @@
   "plugins": [
     {
       "name": "beamdrop-agent-skills",
-      "description": "beamdrop agent skills — file storage, S3-compatible API, presigned URLs, and more",
+      "description": "beamdrop agent skills — file storage, S3-compatible API, presigned URLs, webhooks, MCP server, and more",
       "version": "1.0.0",
       "author": {
         "name": "tacheraSasi",
@@ -28,7 +28,9 @@
         "skill",
         "file-storage",
         "s3",
-        "presigned-urls"
+        "presigned-urls",
+        "webhooks",
+        "mcp"
       ]
     }
   ]

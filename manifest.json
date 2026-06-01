@@ -32,9 +32,7 @@
         "skill",
         "file-storage",
         "s3",
-        "presigned-urls",
-        "webhooks",
-        "mcp"
+        "presigned-urls"
       ]
     }
   ]

@@ -2,7 +2,7 @@
   "skills": [
     {
       "name": "beamdrop",
-      "description": "Interact with a Beamdrop file storage server — upload, download, and manage files via the S3-compatible API. Use when the user wants to store files, create buckets, generate presigned/shareable URLs, manage API keys, or integrate Beamdrop into their project. Covers Go SDK, HTTP API, presigned URL strategies, and error handling.",
+      "description": "Interact with a Beamdrop file storage server — upload, download, and manage files via the S3-compatible API. Use when the user wants to store files, create buckets, generate presigned/shareable URLs, manage API keys, set up webhooks, connect via MCP, or integrate Beamdrop into their project. Covers Go SDK, HTTP API, presigned URL strategies, webhooks, MCP server, and error handling.",
       "files": [
         "SKILL.md",
         "references/agent-instructions.md"
