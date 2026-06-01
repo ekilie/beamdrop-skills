@@ -1,6 +1,6 @@
 ---
 name: beamdrop
-description: Interact with a Beamdrop file storage server — upload, download, and manage files via the S3-compatible API. Use when the user wants to store files, create buckets, generate presigned/shareable URLs, manage API keys, or integrate Beamdrop into their project. Covers Go SDK, HTTP API, presigned URL strategies, and error handling.
+description: Interact with a Beamdrop file storage server — upload, download, and manage files via the S3-compatible API. Use when the user wants to store files, create buckets, generate presigned/shareable URLs, manage API keys, set up webhooks, connect via MCP, or integrate Beamdrop into their project. Covers Go SDK, HTTP API, presigned URL strategies, webhooks, MCP server, and error handling.
 license: MIT
 metadata:
   author: "Tachera Sasi"
@@ -24,6 +24,8 @@ Use this skill when the user asks to:
 - Store AI-generated artifacts (code, images, documents, build outputs) on Beamdrop
 - Set up Beamdrop integration in their Go, Python, JavaScript, PHP, or any project
 - Compare presigned URL types or decide on a file-sharing strategy
+- Set up webhooks for real-time event notifications (object, bucket, share, presign events)
+- Connect AI assistants via the built-in MCP server at `/mcp`
 - Debug Beamdrop API errors (401, 404, 409, 429)
 - Configure Beamdrop for production deployment
 

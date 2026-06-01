@@ -1,6 +1,6 @@
 {
   "name": "beamdrop-agent-skills",
-  "description": "beamdrop agent skills — file storage, S3-compatible API, presigned URLs, and more",
+  "description": "beamdrop agent skills — file storage, S3-compatible API, presigned URLs, webhooks, MCP server, and more",
   "version": "1.0.0",
   "author": {
     "name": "tacheraSasi",
@@ -15,12 +15,14 @@
     "skill",
     "file-storage",
     "s3",
-    "presigned-urls"
+    "presigned-urls",
+    "webhooks",
+    "mcp"
   ],
   "skills": [
     {
       "name": "beamdrop",
-      "description": "Interact with a Beamdrop file storage server — upload, download, and manage files via the S3-compatible API. Use when the user wants to store files, create buckets, generate presigned/shareable URLs, manage API keys, or integrate Beamdrop into their project. Covers Go SDK, HTTP API, presigned URL strategies, and error handling.",
+      "description": "Interact with a Beamdrop file storage server — upload, download, and manage files via the S3-compatible API. Use when the user wants to store files, create buckets, generate presigned/shareable URLs, manage API keys, set up webhooks, connect via MCP, or integrate Beamdrop into their project. Covers Go SDK, HTTP API, presigned URL strategies, webhooks, MCP server, and error handling.",
       "version": "1.0.0",
       "source": "./skills/beamdrop",
       "license": "MIT",
@@ -30,7 +32,9 @@
         "skill",
         "file-storage",
         "s3",
-        "presigned-urls"
+        "presigned-urls",
+        "webhooks",
+        "mcp"
       ]
     }
   ]

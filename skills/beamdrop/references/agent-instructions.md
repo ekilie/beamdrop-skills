@@ -1,9 +1,3 @@
----
-name: "Beamdrop Agent Instructions"
-description: "Complete HTTP API reference for AI agents — authentication, all endpoints, request/response formats, error codes, presigned URL strategies, and workflows."
-tags: [api, http, authentication, reference, agent]
----
-
 # Beamdrop Agent Instructions
 
 This document provides everything an AI agent needs to interact with a Beamdrop file storage server via its HTTP API. It covers authentication, all API endpoints with exact request/response formats, error handling, presigned URL strategies, and recommended workflows.
@@ -527,6 +521,125 @@ Body: {"name":"readonly-reports", "permissions":"read", "bucket_scope":"reports"
 → 201 {"accessKeyId":"BDK_...", "secretKey":"sk_...", ...}
 
 This key can only read from the "reports" bucket and expires in 30 days.
+```
+
+### 7. Set up a webhook for object events
+
+```
+POST /api/v1/webhooks
+Body: {"name":"object-watcher","url":"https://my-app.com/webhook","event_types":["beamdrop.object.*"]}
+→ 201 {"webhook":{...}, "secret":"whsec_...", "warning":"Save the secret now..."}
+
+Save the secret — use it to verify webhook signatures in your handler.
+```
+
+### 8. Verify webhook signature in your handler
+
+```
+1. Extract headers: X-Beamdrop-Signature, X-Beamdrop-Timestamp, X-Beamdrop-Delivery-Id
+2. Build signature base: timestamp + "\n" + delivery_id + "\n" + request_body
+3. Compute: expected = "v1=" + hex(HMAC-SHA256(signature_base, webhook_secret))
+4. Compare expected == X-Beamdrop-Signature (constant-time comparison)
+5. Reject if timestamp is too old (replay protection)
+```
+
+## Webhooks API Reference
+
+Webhooks send HMAC-SHA256 signed HTTP POST requests to your endpoints when events occur.
+
+### Create webhook
+
+```
+POST /api/v1/webhooks
+Body: {"name":"my-hook", "url":"https://example.com/webhook", "event_types":["beamdrop.object.*"], "bucket_scope":"my-bucket"}
+→ 201 {"webhook":{id, name, targetUrl, enabled, eventTypes, ...}, "secret":"whsec_...", "warning":"Save the secret now — it will not be shown again."}
+```
+
+### List webhooks
+
+```
+GET /api/v1/webhooks
+→ 200 {"webhooks":[...], "count":N}
+```
+
+### Update webhook
+
+```
+PATCH /api/v1/webhooks/{id}
+Body: {"name":"new-name", "enabled":false, "event_types":["beamdrop.object.created"], "rotate_secret":true}
+→ 200 {"updated":true, "secret":"whsec_new_..."} (secret only if rotate_secret=true)
+```
+
+### Delete webhook
+
+```
+DELETE /api/v1/webhooks/{id}
+→ 204
+```
+
+### Send test event
+
+```
+POST /api/v1/webhooks/{id}/test
+→ 200 {"sent":true, "message":"Test event queued for delivery"}
+```
+
+### List deliveries
+
+```
+GET /api/v1/webhooks/{id}/deliveries
+→ 200 {"deliveries":[{id, status, attemptCount, lastHttpStatus, lastError, ...}], "count":N}
+```
+
+### Event types
+
+- `beamdrop.object.created`, `beamdrop.object.updated`, `beamdrop.object.deleted`
+- `beamdrop.bucket.created`, `beamdrop.bucket.deleted`
+- `beamdrop.share.created`, `beamdrop.share.deleted`
+- `beamdrop.presign.created`, `beamdrop.presign.deleted`
+- Wildcards: `beamdrop.object.*`, `beamdrop.bucket.*`, `beamdrop.share.*`, `beamdrop.presign.*`
+
+### Webhook delivery headers
+
+- `X-Beamdrop-Webhook-Id` — Webhook ID
+- `X-Beamdrop-Event` — Event type
+- `X-Beamdrop-Delivery-Id` — Unique delivery UUID
+- `X-Beamdrop-Timestamp` — Unix timestamp
+- `X-Beamdrop-Signature` — `v1=` + hex HMAC-SHA256 signature
+
+### Delivery behavior
+
+- Max 8 retry attempts with exponential backoff (2s base, 15min max, jitter)
+- Retryable status codes: 408, 425, 429, 500, 502, 503, 504
+- 10-second timeout per attempt
+- Dead-lettered after max attempts exhausted
+- 7-day retention for delivery history
+
+## MCP Server
+
+Beamdrop includes a built-in MCP (Model Context Protocol) server at `/mcp`. It uses Streamable HTTP transport with JSON-RPC 2.0.
+
+- `GET /mcp` — Public discovery (no auth). Returns server info, protocol version, transport, available methods.
+- `POST /mcp` — JSON-RPC 2.0 requests. Requires API key auth (same HMAC-SHA256 as S3 API).
+
+**Methods:** `initialize`, `ping`, `tools/list`, `tools/call`
+
+**16 tools available:** list_buckets, create_bucket, delete_bucket, bucket_exists, list_objects, put_object, get_object, head_object, delete_object, create_presigned_url, list_presigned_urls, get_presigned_url, delete_presigned_url, list_api_keys, create_api_key, delete_api_key
+
+**Configure in Claude Desktop / VS Code:**
+
+```json
+{
+  "mcpServers": {
+    "beamdrop": {
+      "url": "https://your-server.com/mcp",
+      "headers": {
+        "Authorization": "Bearer BDK_your_key:signature",
+        "X-Beamdrop-Date": "ISO-8601-timestamp"
+      }
+    }
+  }
+}
 ```
 
 ## Tips for Agents
