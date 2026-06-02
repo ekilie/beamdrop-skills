@@ -6,7 +6,7 @@ metadata:
   author: "Tachera Sasi"
   repository: "https://github.com/ekilie/beamdrop-skills"
   version: "1.0.0"
-  keywords: "ai, agent, skill, file-storage, s3, presigned-urls"
+  keywords: "beamdrop, ai, agent, skill, file-storage, s3, presigned-urls"
 references:
   - references/agent-instructions.md
 ---
