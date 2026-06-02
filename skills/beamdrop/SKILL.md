@@ -1,6 +1,6 @@
 ---
 name: beamdrop
-description: Interact with a Beamdrop file storage server — upload, download, and manage files via the S3-compatible API. Use when the user wants to store files, create buckets, generate presigned/shareable URLs, manage API keys, set up webhooks, connect via MCP, or integrate Beamdrop into their project. Covers Go SDK, HTTP API, presigned URL strategies, webhooks, MCP server, and error handling.
+description: Interact with a Beamdrop file storage server — upload, download, and manage files via the S3-compatible API. Use when the user wants to store files, create buckets, generate presigned/shareable URLs, manage API keys, set up webhooks, connect via MCP, or integrate Beamdrop into their project. Covers Go SDK, TypeScript/JavaScript SDK (npm package), HTTP API, presigned URL strategies, webhooks, MCP server, and error handling.
 license: MIT
 metadata:
   author: "Tachera Sasi"
@@ -22,7 +22,8 @@ Use this skill when the user asks to:
 - Generate presigned or shareable download URLs
 - Manage Beamdrop API keys (create, list, delete, scope permissions)
 - Store AI-generated artifacts (code, images, documents, build outputs) on Beamdrop
-- Set up Beamdrop integration in their Go, Python, JavaScript, PHP, or any project
+- Set up Beamdrop integration in their Go, TypeScript/JavaScript (Node.js, Bun, Deno), Python, PHP, or any project
+- Use the `beamdrop` npm package in Express.js, Elysia, Next.js, or any TS/JS framework
 - Compare presigned URL types or decide on a file-sharing strategy
 - Set up webhooks for real-time event notifications (object, bucket, share, presign events)
 - Connect AI assistants via the built-in MCP server at `/mcp`
@@ -159,6 +160,250 @@ list, err := c.ListObjects(ctx, "bucket", client.ListObjectsOptions{
 
 Object key rules: max 1024 bytes, no `..`, no leading `/`. Forward slashes create virtual directory hierarchies.
 Max upload size: 5GB. Writes are atomic (crash-safe). ETag = MD5 hex hash of content.
+
+## TypeScript / JavaScript SDK (`beamdrop` npm package)
+
+When generating TypeScript or JavaScript code, always use the official npm package:
+
+```bash
+# npm / pnpm / yarn
+npm install beamdrop
+
+# Bun
+bun add beamdrop
+```
+
+Works in Node.js (≥18), Bun, Deno, and any runtime with Web Crypto + Fetch APIs.
+
+### Initialization
+
+```ts
+import { Beamdrop, BeamdropException } from "beamdrop";
+
+const client = new Beamdrop({
+  baseUrl: process.env.BEAMDROP_BASE_URL!, // e.g. "http://localhost:7777"
+  accessKey: process.env.BEAMDROP_ACCESS_KEY_ID!, // "BDK_xxxx"
+  secretKey: process.env.BEAMDROP_SECRET_KEY!, // "sk_xxxx"
+  // connectTimeout: 10_000,  // Optional, reserved for future use (default 10s)
+  // timeout: 120_000,        // Optional, total request timeout (default 2min)
+});
+```
+
+All methods are `async` and throw `BeamdropException` on failure.
+
+### Bucket Operations
+
+```ts
+// List all buckets → ListBucketsResponse { buckets: BucketInfo[], count: number }
+const { buckets, count } = await client.listBuckets();
+
+// Create bucket — throws 409 if already exists
+const created = await client.createBucket("my-bucket");
+// → CreateBucketResponse { bucket, created, location }
+
+// Create bucket (IDEMPOTENT — preferred for automation)
+const result = await client.createBucketIfNotExists("my-bucket");
+if ("exists" in result) {
+  console.log("Bucket already existed");
+} else {
+  console.log("Bucket created at", result.created);
+}
+
+// Check existence via HEAD (returns false on 404, not an error)
+const exists = await client.bucketExists("my-bucket"); // → boolean
+
+// Delete (must be empty — throws 409 if objects remain)
+await client.deleteBucket("my-bucket");
+```
+
+### Object Operations
+
+```ts
+// Upload — body accepts string, Blob, ArrayBuffer, ReadableStream, etc.
+const uploaded = await client.putObject(
+  "bucket",
+  "path/to/file.txt",
+  "content",
+);
+// → PutObjectResponse { bucket, key, etag, size, url }
+
+// Upload binary (e.g. from file in Node.js/Bun)
+import { readFileSync } from "fs";
+const buffer = readFileSync("photo.jpg");
+await client.putObject("bucket", "photos/photo.jpg", buffer);
+
+// Download → GetObjectResponse { body (UTF-8 string), content_type, content_length, etag, last_modified }
+const obj = await client.getObject("bucket", "path/to/file.txt");
+console.log(obj.body); // file content as string
+console.log(obj.content_type); // "text/plain"
+console.log(obj.etag); // MD5 hex hash
+// NOTE: body is returned as UTF-8 string — for binary files, use presigned URLs
+
+// Metadata only (no body) → ObjectMetadata { content_type, content_length, etag, last_modified }
+const meta = await client.headObject("bucket", "path/to/file.txt");
+
+// Check existence (false on 404, not an error)
+const exists = await client.objectExists("bucket", "key"); // → boolean
+
+// Delete
+await client.deleteObject("bucket", "path/to/file.txt");
+
+// List objects with S3-style prefix/delimiter
+const list = await client.listObjects("bucket", "folder/", "/", 100);
+// list.contents  → ObjectInfo[] { key, size, lastModified, etag }
+// list.commonPrefixes → string[] (virtual subdirectories)
+// list.isTruncated → boolean
+// NOTE: contents and commonPrefixes may be null — use ?? [] for safety
+for (const obj of list.contents ?? []) {
+  console.log(obj.key, obj.size);
+}
+```
+
+### Presigned URLs (Client-side HMAC)
+
+Generated locally — no server call needed:
+
+```ts
+// Generate a download URL valid for 1 hour (3600 seconds)
+const url = await client.presignedUrl("bucket", "file.txt", 3600);
+// → "http://server/api/v1/buckets/bucket/file.txt?token=...&expires=...&access_key=..."
+
+// With custom method
+const putUrl = await client.presignedUrl("bucket", "file.txt", 3600, "PUT");
+```
+
+### Pretty Presigned URLs (Server-side)
+
+Registered on the server, short `/dl/{token}` URLs with tracking:
+
+```ts
+// Create — expires in 7 days, max 100 downloads
+const link = await client.createPrettyPresignedUrl(
+  "bucket",
+  "report.pdf",
+  7 * 86400, // expiresIn (seconds), null for no expiry
+  100, // maxDownloads, null for unlimited
+);
+// → CreatePrettyPresignedUrlResponse { token, url, bucket, key, method, expiresAt, maxDownloads, createdAt }
+console.log(link.url); // "https://server/dl/a1b2c3d4..."
+
+// List all active presigned URLs
+const { urls, count } = await client.listPrettyPresignedUrls();
+
+// Revoke — download link immediately stops working
+await client.revokePrettyPresignedUrl(link.token);
+```
+
+### Error Handling
+
+```ts
+import { Beamdrop, BeamdropException } from "beamdrop";
+
+try {
+  await client.getObject("bucket", "missing.txt");
+} catch (err) {
+  if (err instanceof BeamdropException) {
+    console.error(`HTTP ${err.status}: ${err.message}`);
+    // err.status — HTTP status code (0 for network/timeout errors)
+    // err.body   — parsed JSON error body from server (optional)
+    // err.body?.error?.code — machine-readable error code
+
+    switch (err.status) {
+      case 404:
+        console.log("Not found");
+        break;
+      case 409:
+        console.log("Conflict");
+        break;
+      case 429:
+        console.log("Rate limited — retry later");
+        break;
+    }
+  }
+}
+```
+
+### TypeScript Types Reference
+
+All types are exported from the package:
+
+```ts
+import type {
+  BucketInfo, // { name, createdAt }
+  ListBucketsResponse, // { buckets, count }
+  CreateBucketResponse, // { bucket, created, location }
+  CreateBucketIfNotExistsResponse, // CreateBucketResponse | { bucket, exists, location }
+  PutObjectResponse, // { bucket, key, etag, size, url }
+  ObjectMetadata, // { content_type, content_length, etag, last_modified }
+  GetObjectResponse, // ObjectMetadata & { body }
+  ObjectInfo, // { key, size, lastModified, etag }
+  ListObjectsResponse, // { bucket, prefix, delimiter, maxKeys, isTruncated, contents, commonPrefixes }
+  PrettyPresignedUrlInfo, // { token, url, bucket, key, method, expiresAt, maxDownloads, createdAt }
+  CreatePrettyPresignedUrlResponse, // same as PrettyPresignedUrlInfo
+  ListPrettyPresignedUrlsResponse, // { urls, count }
+} from "beamdrop";
+```
+
+### Framework Integration Examples
+
+#### Express.js
+
+```ts
+import express from "express";
+import multer from "multer";
+import { Beamdrop, BeamdropException } from "beamdrop";
+
+const client = new Beamdrop({ baseUrl, accessKey, secretKey });
+const upload = multer({ storage: multer.memoryStorage() });
+const app = express();
+
+// Upload endpoint
+app.post("/upload/:key", upload.single("file"), async (req, res) => {
+  const result = await client.putObject(
+    "my-bucket",
+    req.params.key,
+    req.file!.buffer,
+  );
+  res.status(201).json(result);
+});
+
+// Error middleware
+app.use((err, _req, res, _next) => {
+  if (err instanceof BeamdropException) {
+    res.status(err.status || 502).json({ error: err.message });
+    return;
+  }
+  res.status(500).json({ error: "internal server error" });
+});
+```
+
+#### Elysia (Bun)
+
+```ts
+import { Elysia, t } from "elysia";
+import { Beamdrop, BeamdropException } from "beamdrop";
+
+const client = new Beamdrop({ baseUrl, accessKey, secretKey });
+
+const app = new Elysia()
+  .onError(({ error, set }) => {
+    if (error instanceof BeamdropException) {
+      set.status = error.status || 502;
+      return { error: error.message };
+    }
+  })
+  .post(
+    "/upload/:key",
+    async ({ params, body, set }) => {
+      const content = await (body.file as File).arrayBuffer();
+      const result = await client.putObject("my-bucket", params.key, content);
+      set.status = 201;
+      return result;
+    },
+    { body: t.Object({ file: t.File() }) },
+  )
+  .listen(3000);
+```
 
 ### Presigned URLs — Choosing the Right Type
 
